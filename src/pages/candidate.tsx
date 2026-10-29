@@ -1,9 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock3,
+  HeartHandshake,
+  Inbox,
+  KeyRound,
+  Loader2,
+  LockKeyhole,
+  Phone,
+  RefreshCw,
+  Send,
+  ShieldCheck,
+  Timer,
+  Undo2,
+  UserRound,
+} from 'lucide-react';
 import {
   isPhoneLengthValid,
   normalizePhoneDigits,
 } from '../lib/candidate-phone';
+import './candidate.css';
 
 const SESSION_KEY = 'nbn_candidate_session_token';
 const LINK_KEY = 'nbn_candidate_link_token';
@@ -127,6 +145,78 @@ type CandidateActionResponse = {
   requests_used: number;
   max_requests: number;
 };
+
+function formatCountdown(totalSeconds: number | null) {
+  if (totalSeconds === null) return 'Checking time';
+  const safe = Math.max(0, totalSeconds);
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s left`;
+}
+
+function formatRequestDate(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function CandidateChrome({ candidateCode, children }: { candidateCode?: string; children: ReactNode }) {
+  return (
+    <div className='candidate-app'>
+      <a className='candidate-skip-link' href='#candidate-main'>Skip to content</a>
+      <header className='m3-top-app-bar'>
+        <div className='m3-top-app-bar__inner'>
+          <div className='m3-brand'>
+            <span className='m3-brand__mark' aria-hidden='true'>
+              <HeartHandshake size={20} strokeWidth={2} />
+            </span>
+            <div>
+              <p className='m3-brand__name'>NBN Match</p>
+              <p className='m3-brand__sub'>Private candidate link</p>
+            </div>
+          </div>
+          {candidateCode ? (
+            <span className='m3-assist-chip'>
+              <ShieldCheck size={14} aria-hidden='true' />
+              {candidateCode}
+            </span>
+          ) : null}
+        </div>
+      </header>
+      {children}
+    </div>
+  );
+}
+
+type StatusScreenProps = {
+  icon: ReactNode;
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  tone?: 'default' | 'warning' | 'error';
+};
+
+function StatusScreen({ icon, eyebrow = 'Candidate access', title, description, tone = 'default' }: StatusScreenProps) {
+  const toneClass = tone === 'default' ? '' : ` m3-status__icon--${tone}`;
+
+  return (
+    <CandidateChrome>
+      <main id='candidate-main' className='m3-main m3-main--narrow'>
+        <section className='m3-status' aria-live='polite'>
+          <span className={`m3-status__icon${toneClass}`} aria-hidden='true'>{icon}</span>
+          <p className='m3-eyebrow'>{eyebrow}</p>
+          <h1 className='m3-headline-medium'>{title}</h1>
+          {description ? <p className='m3-body-large'>{description}</p> : null}
+        </section>
+      </main>
+    </CandidateChrome>
+  );
+}
 
 function CandidatePage() {
   const navigate = useNavigate();
@@ -397,90 +487,131 @@ function CandidatePage() {
   const isTimeOver = countdownSeconds !== null && countdownSeconds <= 0;
 
   if (!sessionToken && routeToken && !verified && showPhoneForm) {
+    const phoneFieldError = error === 'invalid_number' || error === 'wrong_phone';
+    const otherError = error && !phoneFieldError ? error : null;
+
     return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <div style={styles.badge}>Candidate access</div>
-          <h1 style={styles.title}>Enter your phone number</h1>
-          <p style={styles.subtitle}>Use the phone saved on your registration to continue.</p>
-          <input
-            type='tel'
-            inputMode='tel'
-            autoComplete='tel'
-            maxLength={20}
-            value={phone}
-            onChange={event => {
-              setPhone(event.target.value);
-              if (error) setError(null);
-            }}
-            onKeyDown={event => {
-              if (event.key === 'Enter') void verifyPhone();
-            }}
-            placeholder='e.g. 01712345678'
-            style={styles.input}
-            aria-label='Phone number'
-            aria-invalid={error === 'invalid_number' || error === 'wrong_phone'}
-          />
-          {error && <div style={styles.error}>{errorText(error)}</div>}
-          <button
-            type='button'
-            disabled={verifying}
-            onClick={verifyPhone}
-            style={{ ...styles.button, opacity: verifying ? 0.7 : 1 }}
-          >
-            {verifying ? 'Checking...' : 'Continue'}
-          </button>
-        </div>
-      </div>
+      <CandidateChrome>
+        <main id='candidate-main' className='m3-main m3-main--narrow'>
+          <section className='m3-auth'>
+            <span className='m3-auth__icon' aria-hidden='true'>
+              <LockKeyhole size={26} strokeWidth={2} />
+            </span>
+            <div>
+              <p className='m3-eyebrow'>Candidate access</p>
+              <h1 className='m3-headline-medium'>Enter your phone number</h1>
+              <p className='m3-body-large'>Use the phone saved on your registration to continue.</p>
+            </div>
+
+            {otherError ? (
+              <div className='m3-alert' role='alert'>
+                <AlertCircle className='m3-alert__icon' size={20} aria-hidden='true' />
+                <div className='m3-alert__body'>
+                  <p className='m3-alert__title'>Unable to open this link</p>
+                  <p className='m3-alert__text'>{errorText(otherError)}</p>
+                </div>
+              </div>
+            ) : null}
+
+            <form
+              className='m3-auth__form'
+              onSubmit={event => {
+                event.preventDefault();
+                void verifyPhone();
+              }}
+            >
+              <div>
+                <label className='m3-field-label' htmlFor='candidate-phone'>Phone number</label>
+                <div className='m3-text-field' data-invalid={phoneFieldError}>
+                  <Phone className='m3-text-field__icon' size={20} aria-hidden='true' />
+                  <input
+                    id='candidate-phone'
+                    type='tel'
+                    inputMode='tel'
+                    autoComplete='tel'
+                    maxLength={20}
+                    value={phone}
+                    onChange={event => {
+                      setPhone(event.target.value);
+                      if (error) setError(null);
+                    }}
+                    placeholder='e.g. 01712345678'
+                    aria-invalid={phoneFieldError}
+                    aria-describedby='candidate-phone-help'
+                  />
+                </div>
+              </div>
+
+              <p
+                id='candidate-phone-help'
+                className={`m3-field-support${phoneFieldError ? ' m3-field-support--error' : ''}`}
+                aria-live='polite'
+              >
+                {phoneFieldError
+                  ? errorText(error)
+                  : 'Use the same number you gave during registration. Country code is optional.'}
+              </p>
+
+              <button type='submit' className='m3-button m3-button--filled m3-button--block' disabled={verifying}>
+                {verifying ? (
+                  <>
+                    <span className='m3-spinner' aria-hidden='true' />
+                    Checking…
+                  </>
+                ) : (
+                  'Continue'
+                )}
+              </button>
+            </form>
+          </section>
+
+          <p className='m3-footer-note'>This link is personal. Do not share it with anyone else.</p>
+        </main>
+      </CandidateChrome>
     );
   }
 
   if (!sessionToken && !routeToken && !hasLoadedSession) {
     return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <div style={styles.badge}>Candidate access</div>
-          <h1 style={styles.title}>No active session</h1>
-          <p style={styles.subtitle}>Please use your personal link to continue.</p>
-        </div>
-      </div>
+      <StatusScreen
+        icon={<KeyRound size={28} strokeWidth={2} />}
+        title='No active session'
+        description='Please use your personal link to continue.'
+      />
     );
   }
 
   if (!sessionToken && !routeToken && hasLoadedSession) {
     return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <div style={styles.badge}>Candidate access</div>
-          <h1 style={styles.title}>Session expired</h1>
-          <p style={styles.subtitle}>
-            {error ? errorText(error) : 'Please reopen your personal link and verify again.'}
-          </p>
-        </div>
-      </div>
+      <StatusScreen
+        icon={<KeyRound size={28} strokeWidth={2} />}
+        tone='warning'
+        title='Session expired'
+        description={error ? errorText(error) : 'Please reopen your personal link and verify again.'}
+      />
     );
   }
 
   if (loadingProfiles || !sessionToken) {
     return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <div style={styles.badge}>Candidate access</div>
-          <h1 style={styles.title}>Loading profiles...</h1>
-        </div>
-      </div>
+      <StatusScreen
+        icon={<span className='m3-spinner m3-spinner--large' aria-hidden='true' />}
+        eyebrow='Loading'
+        title='Loading profiles…'
+        description='Please wait while we prepare your matches.'
+      />
     );
   }
 
   if (isTimeOver) {
     return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <div style={styles.badge}>Time is over</div>
-          <h1 style={styles.title}>This candidate link is no longer active.</h1>
-          <p style={styles.subtitle}>The request window has ended.</p>
-        </div>
-      </div>
+      <StatusScreen
+        icon={<Clock3 size={28} strokeWidth={2} />}
+        tone='warning'
+        eyebrow='Time is over'
+        title='This candidate link is no longer active'
+        description='The request window has ended.'
+      />
     );
   }
 
