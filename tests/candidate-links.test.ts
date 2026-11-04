@@ -39,9 +39,10 @@ type InterestRequest = {
   event_id: string;
   from_registration_id: string;
   to_registration_id: string;
-  status: 'sent' | 'withdrawn';
+  status: 'sent' | 'withdrawn' | 'accepted';
   created_at: Date;
   withdrawn_at: Date | null;
+  accepted_at?: Date | null;
 };
 
 type EventState = {
@@ -298,16 +299,23 @@ function linkListProfiles(state: CandidateLinkState, sessionHash: string) {
     .filter((row) => row.event_id === state.event.id)
     .filter((row) => row.status === 'approved' && row.deleted_at == null)
     .filter((row) => row.gender !== registration.gender)
-    .map((row) => ({
-      candidate_code: row.candidate_code,
-      photo_path: row.photo_path,
-      profile: pickPublicProfile(row.form_data, state.profile_fields),
-      requested: state.interest_requests.some((interest) =>
-        interest.event_id === state.event.id &&
-        interest.from_registration_id === registration.id &&
-        interest.to_registration_id === row.id &&
-        interest.status === 'sent'),
-    }));
+    .map((row) => {
+      const requestStatus = state.interest_requests
+        .filter((interest) =>
+          interest.event_id === state.event.id &&
+          interest.from_registration_id === registration.id &&
+          interest.to_registration_id === row.id &&
+          (interest.status === 'sent' || interest.status === 'accepted'))
+        .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())[0]?.status ?? null;
+
+      return {
+        candidate_code: row.candidate_code,
+        photo_path: row.photo_path,
+        profile: pickPublicProfile(row.form_data, state.profile_fields),
+        requested: requestStatus === 'sent',
+        request_status: requestStatus,
+      };
+    });
 
   return {
     ok: true,

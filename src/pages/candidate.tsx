@@ -1290,6 +1290,7 @@ type ProfileItem = {
   photo_url?: string | null;
   profile?: Record<string, unknown>;
   requested?: boolean;
+  request_status?: 'sent' | 'accepted' | 'withdrawn' | null;
 };
 
 type RequestItem = {
@@ -1918,10 +1919,12 @@ function CandidatePage() {
 
         <div style={styles.profileGrid}>
           {profiles.map(profile => {
-            const requested = !!profile.requested;
+            const requestStatus = profile.request_status;
+            const isAccepted = requestStatus === 'accepted';
+            const requested = requestStatus === 'sent' || (!requestStatus && !!profile.requested);
             const key = profile.candidate_code;
             const isBusy = !!actioning[key];
-            const canSend = !requested && !hasReachedLimit;
+            const canSend = !requested && !isAccepted && !hasReachedLimit;
             const profileDetails = profile.profile ? Object.entries(profile.profile) : [];
             
             // Extract name and education
@@ -1964,7 +1967,11 @@ function CandidatePage() {
                   <div style={styles.profileHeader}>
                     <div style={styles.codeWrap}>
                       <div style={styles.code}>{profile.candidate_code}</div>
-                      {requested ? <span style={styles.requestedChip}>Requested</span> : null}
+                      {isAccepted ? (
+                        <span style={styles.acceptedChip}>Accepted</span>
+                      ) : requested ? (
+                        <span style={styles.requestedChip}>Requested</span>
+                      ) : null}
                     </div>
                   </div>
 
@@ -1997,18 +2004,32 @@ function CandidatePage() {
                     <p style={styles.mutedText}>Profile details not available.</p>
                   )}
 
-                  <button
-                    type='button'
-                    onClick={() => applyAction(key, requested ? 'withdraw' : 'send')}
-                    disabled={isBusy || (!canSend && !requested)}
-                    style={{
-                      ...styles.actionButton,
-                      ...(requested ? styles.withdraw : styles.send),
-                      opacity: isBusy || (!canSend && !requested) ? 0.6 : 1,
-                    }}
-                  >
-                    {isBusy ? 'Please wait...' : requested ? 'Withdraw' : 'Send'}
-                  </button>
+                  {isAccepted ? (
+                    <button
+                      type='button'
+                      disabled
+                      style={{
+                        ...styles.actionButton,
+                        ...styles.acceptedAction,
+                        cursor: 'default',
+                      }}
+                    >
+                      Accepted ✓
+                    </button>
+                  ) : (
+                    <button
+                      type='button'
+                      onClick={() => applyAction(key, requested ? 'withdraw' : 'send')}
+                      disabled={isBusy || (!canSend && !requested)}
+                      style={{
+                        ...styles.actionButton,
+                        ...(requested ? styles.withdraw : styles.send),
+                        opacity: isBusy || (!canSend && !requested) ? 0.6 : 1,
+                      }}
+                    >
+                      {isBusy ? 'Please wait...' : requested ? 'Withdraw' : 'Send'}
+                    </button>
+                  )}
                 </div>
               </article>
             );
@@ -2332,6 +2353,17 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
     marginTop: 2,
   },
+  acceptedChip: {
+    background: '#e7f6ec',
+    border: '1px solid #b7e2c4',
+    color: '#1a5c34',
+    borderRadius: 999,
+    padding: '4px 7px',
+    fontSize: 10,
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+    marginTop: 2,
+  },
   profileFields: {
     display: 'grid',
     gap: 4,
@@ -2376,6 +2408,12 @@ const styles: Record<string, React.CSSProperties> = {
   withdraw: {
     background: '#efeae7',
     color: '#3d2c32',
+  },
+  acceptedAction: {
+    background: '#e7f6ec',
+    color: '#1a5c34',
+    border: '1px solid #b7e2c4',
+    opacity: 1,
   },
   requestsCard: {
     marginTop: 20,
