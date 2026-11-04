@@ -25,7 +25,7 @@ export type RequestPairRow = {
   event_id: string;
   from_code: string;
   to_code: string;
-  status: 'sent' | 'withdrawn';
+  status: 'sent' | 'withdrawn' | 'accepted';
   created_at: string;
   is_mutual: boolean;
 };

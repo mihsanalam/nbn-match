@@ -25,7 +25,7 @@ function CandidateLinksPanel({ eventId, eventLabel }: { eventId: string; eventLa
   const [copiedRegistrationId, setCopiedRegistrationId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [requestRows, setRequestRows] = useState<RequestPairRow[]>([]);
-  const [requestFilter, setRequestFilter] = useState<'all' | 'mutual' | 'sent' | 'withdrawn'>('all');
+  const [requestFilter, setRequestFilter] = useState<'all' | 'sent' | 'accepted' | 'withdrawn'>('all');
   const [linkFilter, setLinkFilter] = useState<'all' | 'active' | 'no_link' | 'revoked' | 'locked'>('all');
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
 
@@ -64,7 +64,6 @@ function CandidateLinksPanel({ eventId, eventLabel }: { eventId: string; eventLa
   const filteredRequests = useMemo(() => {
     return requestRows.filter((row) => {
       if (requestFilter === 'all') return true;
-      if (requestFilter === 'mutual') return !!row.is_mutual;
       return row.status === requestFilter;
     });
   }, [requestRows, requestFilter]);
@@ -330,9 +329,9 @@ function CandidateLinksPanel({ eventId, eventLabel }: { eventId: string; eventLa
         </div>
 
         <div className='mb-3 flex flex-wrap gap-2'>
-          {(['all', 'mutual', 'sent', 'withdrawn'] as const).map((value) => (
+          {(['all', 'sent', 'accepted', 'withdrawn'] as const).map((value) => (
             <button key={value} type='button' onClick={() => setRequestFilter(value)} className={buttonClass}>
-              {value === 'all' ? 'All' : value === 'mutual' ? 'Mutual' : value}
+              {value === 'all' ? 'All' : value}
             </button>
           ))}
         </div>
