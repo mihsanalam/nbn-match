@@ -1,4 +1,5 @@
 # NBN Match Making Event — Website
+<img width="1738" height="742" alt="image" src="https://github.com/user-attachments/assets/cf6e4e0c-f713-478a-9361-1050209b5103" />
 
 Bilingual (বাংলা / English) single-page website for the NBN Match Making Event, built with **React 19 + Vite 7 + TypeScript + Tailwind CSS 4**, smooth scrolling via Lenis, and client-side routing via wouter.
 
